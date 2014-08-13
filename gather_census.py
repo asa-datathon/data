@@ -253,6 +253,8 @@ for msa_name, counties_for_msa in WANTED_MSAS.items():
           tract_id = row['tract']
           if len(tract_id) == 5:
             tract_id = '0' + tract_id
+          if len(tract_id) == 4:
+            tract_id = tract_id + '00'
           row_id = state_fips + county_fips + '_' + tract_id
           if row_id not in statistics_by_tract:
             statistics_by_tract[row_id] = {'msa_name': msa_name}
@@ -265,6 +267,9 @@ for msa_name, counties_for_msa in WANTED_MSAS.items():
       for code_info in WANTED_CODES:
         label = code_info[0]
         for index, year in enumerate(WANTED_YEARS):
+          code = code_info[index + 1]
+          if code == '':
+            continue
           key = label + ' ' + str(year)
           if key in tract_statistics:
             value = tract_statistics[key]

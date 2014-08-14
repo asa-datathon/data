@@ -207,10 +207,26 @@ WANTED_MSAS = {
     ['06', '041'],
   ],
 }
+# These files are tab-separated lists of tract IDs and their rough centroids as lat/lon pairs
+COORDS_FILENAMES = [
+  'tract_coords_2000.txt',
+  'tract_coords_2010.txt',
+]
+
+coords_by_geoid = {}
+for coord_filename in COORDS_FILENAMES:
+  sys.stderr.write("Loading coordinates from %s\n" % coord_filename)
+  with open(coord_filename) as file:
+    for line in file:
+      parts = line.strip().split("\t")
+      if len(parts) != 3:
+        continue
+      geo_id, lat, lon = parts
+      coords_by_geoid[geo_id] = [lat, lon]
 
 c = Census(CENSUS_API_KEY)
 
-headers = ['MSA','Tract ID']
+headers = ['MSA','Tract ID', 'Latitude', 'Longitude']
 for code_info in WANTED_CODES:
   label = code_info[0]
   for index, year in enumerate(WANTED_YEARS):
@@ -253,17 +269,24 @@ for msa_name, counties_for_msa in WANTED_MSAS.items():
           tract_id = row['tract']
           if len(tract_id) == 5:
             tract_id = '0' + tract_id
-          if len(tract_id) == 4:
+          elif len(tract_id) == 4:
             tract_id = tract_id + '00'
-          row_id = state_fips + county_fips + '_' + tract_id
-          if row_id not in statistics_by_tract:
-            statistics_by_tract[row_id] = {'msa_name': msa_name}
+          elif len(tract_id) == 3:
+            tract_id = tract_id + '000'
+          geo_id = state_fips + county_fips + tract_id
+          if geo_id not in statistics_by_tract:
+            statistics_by_tract[geo_id] = {'msa_name': msa_name}
           key = label + ' ' + str(year)
-          statistics_by_tract[row_id][key] = row[code]
+          statistics_by_tract[geo_id][key] = row[code]
 
-    for tract_id, tract_statistics in statistics_by_tract.items():
+    for geo_id, tract_statistics in statistics_by_tract.items():
       msa_name = tract_statistics['msa_name']
-      values = [msa_name, tract_id]
+      if geo_id in coords_by_geoid:
+        lat, lon = coords_by_geoid[geo_id]
+      else:
+        lat = ''
+        lon = ''
+      values = [msa_name, geo_id, str(lat), str(lon)]
       for code_info in WANTED_CODES:
         label = code_info[0]
         for index, year in enumerate(WANTED_YEARS):
